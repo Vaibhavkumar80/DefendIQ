@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Scan } from '../models/Scan.js';
 import { Alert } from '../models/Alert.js';
@@ -36,7 +37,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const prevStart = new Date(now - 2 * range * DAY);
   const fetchFrom = new Date(Math.min(prevStart.getTime(), now - 60 * DAY));
 
-  const scans = await Scan.find({ user: req.user._id, createdAt: { $gte: fetchFrom } }).select('type target label verdict score primaryThreat categories flags createdAt').sort({ createdAt: -1 }).limit(5000).lean();
+  const scans = await Scan.find({ user: req.user._id, createdAt: mongoose.trusted({ $gte: fetchFrom }) }).select('type target label verdict score primaryThreat categories flags createdAt').sort({ createdAt: -1 }).limit(5000).lean();
   const inRange = scans.filter((s) => s.createdAt >= start);
   const prev = scans.filter((s) => s.createdAt >= prevStart && s.createdAt < start);
   const cur = stats(inRange), old = stats(prev);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { User } from '../models/User.js';
 import { Scan } from '../models/Scan.js';
@@ -15,7 +16,7 @@ router.use(requireAuth);
 router.get('/profile', asyncHandler(async (req, res) => {
   const uid = req.user._id;
   const [scans, threats, quizzes, simsCorrect, hasPw] = await Promise.all([
-    Scan.countDocuments({ user: uid }), Scan.countDocuments({ user: uid, verdict: { $ne: 'safe' } }),
+    Scan.countDocuments({ user: uid }), Scan.countDocuments({ user: uid, verdict: mongoose.trusted({ $ne: 'safe' }) }),
     QuizResult.find({ user: uid }).lean(), SimResult.distinct('scenarioId', { user: uid, correct: true }),
     User.findById(uid).select('+passwordHash').then((u) => !!u.passwordHash),
   ]);

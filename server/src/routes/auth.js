@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
+import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { User } from '../models/User.js';
@@ -85,7 +86,7 @@ router.post('/forgot', limiter, asyncHandler(async (req, res) => {
 
 router.post('/reset', limiter, asyncHandler(async (req, res) => {
   const body = z.object({ email, token: z.string().length(64), password }).parse(req.body);
-  const user = await User.findOne({ email: body.email, resetTokenHash: sha(body.token), resetExpires: { $gt: new Date() } }).select('+resetTokenHash +resetExpires');
+  const user = await User.findOne({ email: body.email, resetTokenHash: sha(body.token), resetExpires: mongoose.trusted({ $gt: new Date() }) }).select('+resetTokenHash +resetExpires');
   if (!user) throw new AppError(400, 'This reset link is invalid or has expired.');
   user.passwordHash = await bcrypt.hash(body.password, 12);
   user.sessionVersion += 1;

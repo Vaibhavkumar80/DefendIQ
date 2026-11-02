@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Scan } from '../models/Scan.js';
 import { asyncHandler } from '../lib/errors.js';
@@ -18,7 +19,7 @@ const csvCell = (v) => {
 router.get('/summary', asyncHandler(async (req, res) => {
   const { days } = q.parse(req.query);
   const since = new Date(Date.now() - days * DAY);
-  const scans = await Scan.find({ user: req.user._id, createdAt: { $gte: since } }).select('type target label verdict score primaryThreat findings.title findings.id createdAt').sort({ createdAt: -1 }).limit(10000).lean();
+  const scans = await Scan.find({ user: req.user._id, createdAt: mongoose.trusted({ $gte: since }) }).select('type target label verdict score primaryThreat findings.title findings.id createdAt').sort({ createdAt: -1 }).limit(10000).lean();
   const count = (fn) => scans.filter(fn).length;
   const findingCounts = new Map();
   scans.forEach((s) => (s.findings || []).forEach((f) => findingCounts.set(f.title, (findingCounts.get(f.title) || 0) + 1)));
@@ -37,7 +38,7 @@ router.get('/summary', asyncHandler(async (req, res) => {
 
 router.get('/export.csv', asyncHandler(async (req, res) => {
   const { days } = q.parse(req.query);
-  const scans = await Scan.find({ user: req.user._id, createdAt: { $gte: new Date(Date.now() - days * DAY) } }).sort({ createdAt: -1 }).limit(10000).lean();
+  const scans = await Scan.find({ user: req.user._id, createdAt: mongoose.trusted({ $gte: new Date(Date.now() - days * DAY) }) }).sort({ createdAt: -1 }).limit(10000).lean();
   const rows = [['Date', 'Type', 'Target', 'Verdict', 'Safety score', 'Primary threat', 'Top finding'].map(csvCell).join(',')];
   scans.forEach((s) => rows.push([s.createdAt.toISOString(), s.type, s.target, s.verdict, s.score, s.primaryThreat, s.findings?.[0]?.title || ''].map(csvCell).join(',')));
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');

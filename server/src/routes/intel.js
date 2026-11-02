@@ -15,7 +15,7 @@ let cache = { at: 0, v: null };
 
 async function publicStats() {
   if (cache.v && Date.now() - cache.at < 60000) return cache.v;
-  const [scans, threats, users] = await Promise.all([Scan.estimatedDocumentCount(), Scan.countDocuments({ verdict: { $ne: 'safe' } }), User.estimatedDocumentCount()]);
+  const [scans, threats, users] = await Promise.all([Scan.estimatedDocumentCount(), Scan.countDocuments({ verdict: mongoose.trusted({ $ne: 'safe' }) }), User.estimatedDocumentCount()]);
   cache = { at: Date.now(), v: { scans, threats, users, feedEntries: getFeedStatus().entries } };
   return cache.v;
 }
@@ -39,7 +39,7 @@ router.get('/intel/overview', optionalAuth, asyncHandler(async (req, res) => {
   ]);
   const f = agg[0] || { threat: [], verdict: [], brands: [] };
   let mine = [];
-  if (req.user) mine = await Scan.find({ user: req.user._id, verdict: { $ne: 'safe' } }).sort({ createdAt: -1 }).limit(6).select('type label verdict score primaryThreat createdAt').lean();
+  if (req.user) mine = await Scan.find({ user: req.user._id, verdict: mongoose.trusted({ $ne: 'safe' }) }).sort({ createdAt: -1 }).limit(6).select('type label verdict score primaryThreat createdAt').lean();
   res.json({
     feeds: getFeedStatus(), localAI: llmEnabled(),
     community: { period: '30 days', verdicts: f.verdict.map((x) => ({ verdict: x._id, count: x.n })), threats: f.threat.map((x) => ({ type: x._id, count: x.n })), topImpersonations: f.brands.map((x) => ({ title: x._id, count: x.n })) },
