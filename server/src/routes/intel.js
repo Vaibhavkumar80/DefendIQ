@@ -15,7 +15,7 @@ let cache = { at: 0, v: null };
 
 async function publicStats() {
   if (cache.v && Date.now() - cache.at < 60000) return cache.v;
-  const [scans, threats, users] = await Promise.all([Scan.estimatedDocumentCount(), Scan.countDocuments({ verdict: mongoose.trusted({ $ne: 'safe' }) }), User.estimatedDocumentCount()]);
+  const [scans, threats, users] = await Promise.all([Scan.countDocuments({}), Scan.countDocuments({ verdict: mongoose.trusted({ $ne: 'safe' }) }), User.countDocuments({})]);
   cache = { at: Date.now(), v: { scans, threats, users, feedEntries: getFeedStatus().entries } };
   return cache.v;
 }
