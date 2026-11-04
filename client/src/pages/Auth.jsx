@@ -11,6 +11,7 @@ import { useApi, useDocumentTitle } from '../lib/hooks.js';
 import { CountUp } from '../components/Motion.jsx';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const normalizeEmail = (value) => value.trim().toLowerCase();
 function strength(p) { let s = 0; if (p.length >= 8) s++; if (p.length >= 12) s++; if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++; if (/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++; return s; }
 
 function PwField({ value, onChange, placeholder = 'Password', error, autoComplete }) {
@@ -53,11 +54,12 @@ export function Login() {
   async function submit(e) {
     e.preventDefault();
     const er = {};
-    if (!EMAIL_RE.test(f.email)) er.email = 'Enter a valid email address.';
+    const email = normalizeEmail(f.email);
+    if (email.length > 254 || !EMAIL_RE.test(email)) er.email = 'Enter a valid email address.';
     if (!f.password) er.password = 'Enter your password.';
     setErr(er); if (Object.keys(er).length) return;
     setBusy(true);
-    try { await login({ email: f.email, password: f.password, remember: f.remember }); nav(dest, { replace: true }); } catch (x) { setErr({ form: x.message }); } finally { setBusy(false); }
+    try { await login({ email, password: f.password, remember: f.remember }); nav(dest, { replace: true }); } catch (x) { setErr({ form: x.message }); } finally { setBusy(false); }
   }
   return (
     <AuthShell eyebrow="Welcome back" title="Secure Your" accent="Digital World" text="Log in to DefendIQ to scan for phishing, malware and other online threats." points={['AI-assisted threat detection', 'On-demand URL and email scanning', 'Secure & private']}>
@@ -88,13 +90,14 @@ export function Signup() {
   async function submit(e) {
     e.preventDefault();
     const er = {};
+    const email = normalizeEmail(f.email);
     if (f.name.trim().length < 2) er.name = 'Enter your full name.';
-    if (!EMAIL_RE.test(f.email)) er.email = 'Enter a valid email address.';
+    if (email.length > 254 || !EMAIL_RE.test(email)) er.email = 'Enter a valid email address.';
     if (f.password.length < 8 || !/[A-Za-z]/.test(f.password) || !/\d/.test(f.password)) er.password = 'Use 8+ characters with a letter and a number.';
     if (f.confirm !== f.password) er.confirm = 'Passwords do not match.';
     setErr(er); if (Object.keys(er).length) return;
     setBusy(true);
-    try { await register({ name: f.name, email: f.email, password: f.password, confirmPassword: f.confirm, remember: true }); toast.success('Account created. Welcome to DefendIQ!'); nav('/dashboard', { replace: true }); } catch (x) { setErr(x.fields || { form: x.message }); } finally { setBusy(false); }
+    try { await register({ name: f.name, email, password: f.password, confirmPassword: f.confirm, remember: true }); toast.success('Account created. Welcome to DefendIQ!'); nav('/dashboard', { replace: true }); } catch (x) { setErr(x.fields || { form: x.message }); } finally { setBusy(false); }
   }
   return (
     <AuthShell eyebrow="Create your account" title="Join DefendIQ" accent="Be One Step Ahead" text="Get started for free and access tools that help you assess suspicious links and emails." points={['AI-assisted protection', 'On-demand threat analysis', 'Detailed security reports', 'Your privacy matters']}>
@@ -122,9 +125,10 @@ export function Forgot() {
   const [busy, setBusy] = useState(false);
   async function submit(e) {
     e.preventDefault();
-    if (!EMAIL_RE.test(email)) return setErr('Enter a valid email address.');
+    const normalizedEmail = normalizeEmail(email);
+    if (normalizedEmail.length > 254 || !EMAIL_RE.test(normalizedEmail)) return setErr('Enter a valid email address.');
     setBusy(true); setErr('');
-    try { await api.post('/auth/forgot', { email }); setDone(true); } catch (x) { setErr(x.message); } finally { setBusy(false); }
+    try { await api.post('/auth/forgot', { email: normalizedEmail }); setDone(true); } catch (x) { setErr(x.message); } finally { setBusy(false); }
   }
   return (
     <AuthShell eyebrow="Account recovery" title="Reset your" accent="password" text="Enter your email and we'll send a reset link that works for 30 minutes." points={['Links expire quickly', 'Single use', 'We never reveal whether an email exists']}>

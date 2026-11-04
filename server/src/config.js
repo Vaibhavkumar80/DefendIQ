@@ -16,7 +16,7 @@ export const config = {
   port: Number(env.PORT) || 5000,
   mongoUri: env.MONGODB_URI || 'mongodb://127.0.0.1:27017/defendiq',
   jwtSecret,
-  clientOrigin: env.CLIENT_ORIGIN || 'http://localhost:5173',
+  clientOrigin: env.CLIENT_ORIGIN || (isProd ? 'https://defend-iq-sable.vercel.app' : 'http://localhost:5173'),
   trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
   googleClientId: env.GOOGLE_CLIENT_ID || '',
   ollama: { url: env.OLLAMA_URL || 'http://127.0.0.1:11434', model: env.OLLAMA_MODEL || '' },

@@ -12,12 +12,23 @@ import { config } from '../config.js';
 
 const router = Router();
 let cache = { at: 0, v: null };
+let pendingStats;
 
 async function publicStats() {
-  if (cache.v && Date.now() - cache.at < 60000) return cache.v;
-  const [scans, threats, users] = await Promise.all([Scan.countDocuments({}), Scan.countDocuments({ verdict: mongoose.trusted({ $ne: 'safe' }) }), User.countDocuments({})]);
-  cache = { at: Date.now(), v: { scans, threats, users, feedEntries: getFeedStatus().entries } };
-  return cache.v;
+  if (cache.v && Date.now() - cache.at < 5 * 60 * 1000) return cache.v;
+  if (pendingStats) return pendingStats;
+  pendingStats = Promise.all([
+    Scan.countDocuments({}),
+    Scan.countDocuments({ verdict: mongoose.trusted({ $ne: 'safe' }) }),
+    User.countDocuments({}),
+  ]).then(([scans, threats, users]) => {
+    cache = { at: Date.now(), v: { scans, threats, users, feedEntries: getFeedStatus().entries } };
+    return cache.v;
+  }).catch((error) => {
+    if (cache.v) return { ...cache.v, stale: true };
+    throw error;
+  }).finally(() => { pendingStats = null; });
+  return pendingStats;
 }
 
 router.get('/public/stats', asyncHandler(async (req, res) => res.json(await publicStats())));

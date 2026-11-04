@@ -4,14 +4,17 @@ import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import { OAuth2Client } from 'google-auth-library';
 import { User } from '../models/User.js';
 import { Alert } from '../models/Alert.js';
 import { asyncHandler, AppError } from '../lib/errors.js';
 import { issueSession, clearSession, optionalAuth, requireAuth } from '../middleware/auth.js';
 import { sendMail } from '../services/mailer.js';
+import { parseGoogleIdentity } from '../services/googleIdentity.js';
 import { config } from '../config.js';
 
 const router = Router();
+const googleOAuthClient = new OAuth2Client();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 25, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many attempts. Please try again in a few minutes.' } });
 const failLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many failed sign-in attempts. Try again later.' } });
 
@@ -46,14 +49,22 @@ router.post('/login', failLimiter, asyncHandler(async (req, res) => {
 router.post('/google', limiter, asyncHandler(async (req, res) => {
   if (!config.googleClientId) throw new AppError(501, 'Google sign-in is not configured on this server.', 'google_disabled');
   const { credential } = z.object({ credential: z.string().min(20).max(4096) }).parse(req.body);
-  const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
-  if (!r?.ok) throw new AppError(401, 'Google sign-in failed.');
-  const info = await r.json();
-  if (info.aud !== config.googleClientId || String(info.email_verified) !== 'true' || !info.email) throw new AppError(401, 'Google sign-in failed.');
-  const mail = String(info.email).toLowerCase();
-  let user = await User.findOne({ $or: [{ googleId: info.sub }, { email: mail }] });
-  if (!user) user = await User.create({ name: (info.name || mail.split('@')[0]).slice(0, 60), email: mail, googleId: info.sub });
-  else if (!user.googleId) user.googleId = info.sub;
+  let info;
+  try {
+    const ticket = await googleOAuthClient.verifyIdToken({ idToken: credential, audience: config.googleClientId });
+    info = ticket.getPayload();
+  } catch {
+    throw new AppError(401, 'Google sign-in failed.');
+  }
+  const identity = parseGoogleIdentity(info, config.googleClientId);
+  if (!identity) throw new AppError(401, 'Google sign-in failed.');
+  let user = await User.findOne({ googleId: identity.sub });
+  if (!user) {
+    user = await User.findOne({ email: identity.email });
+    if (user?.googleId && user.googleId !== identity.sub) throw new AppError(401, 'Google sign-in failed.');
+    if (!user) user = await User.create({ name: identity.name || identity.email.split('@')[0], email: identity.email, googleId: identity.sub });
+    else user.googleId = identity.sub;
+  }
   user.lastLoginAt = new Date();
   await user.save();
   issueSession(res, user, true);

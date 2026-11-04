@@ -1,41 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Play, ShieldCheck, ShieldAlert, ShieldX, Link2, Zap, Lock, Check, GraduationCap, Code2, Briefcase } from 'lucide-react';
+import { ArrowRight, ShieldCheck, ShieldAlert, ShieldX, Link2, Zap, Lock, Check, GraduationCap, Code2, Briefcase } from 'lucide-react';
 import { Reveal, CountUp } from '../components/Motion.jsx';
-import { Modal, VerdictBadge } from '../components/ui.jsx';
-import ScanResult from '../components/ScanResult.jsx';
+import { VerdictBadge } from '../components/ui.jsx';
 import { FEATURES } from './shared.jsx';
 import { api } from '../lib/api.js';
 import { useDocumentTitle } from '../lib/hooks.js';
-
-function DemoModal({ open, onClose }) {
-  const full = 'paypa1-secure-login.xyz/verify/account';
-  const [typed, setTyped] = useState('');
-  const [phase, setPhase] = useState('typing');
-  const [scan, setScan] = useState(null);
-  const [err, setErr] = useState('');
-  useEffect(() => {
-    if (!open) return undefined;
-    setTyped(''); setPhase('typing'); setScan(null); setErr('');
-    let i = 0, dead = false;
-    const t = setInterval(() => {
-      i++; setTyped(full.slice(0, i));
-      if (i >= full.length) {
-        clearInterval(t); setPhase('scanning');
-        api.post('/scan/url', { url: full, deep: false }).then((r) => { if (!dead) { setScan(r.scan); setPhase('done'); } }).catch((e) => { if (!dead) { setErr(e.message); setPhase('done'); } });
-      }
-    }, 55);
-    return () => { dead = true; clearInterval(t); };
-  }, [open]);
-  return (
-    <Modal open={open} onClose={onClose} title="Live demo: scanning a phishing link" width="min(900px,100%)">
-      <div className="field"><span className={phase === 'typing' ? 'type-caret' : ''} style={{ padding: '14px 0' }}>{typed}</span></div>
-      {phase === 'scanning' && <div className="scanning"><span className="spinner" />Analyzing with the real detection engine…</div>}
-      {err && <p className="ferr">{err}</p>}
-      {scan && <div style={{ marginTop: 18 }}><ScanResult scan={scan} /></div>}
-    </Modal>
-  );
-}
 
 function HeroScanner() {
   const [url, setUrl] = useState('');
@@ -119,14 +89,13 @@ function HeroScanner() {
 export default function Home() {
   useDocumentTitle('');
   const nav = useNavigate();
-  const [demo, setDemo] = useState(false);
   const [stats, setStats] = useState(null);
   const [statsError, setStatsError] = useState('');
   useEffect(() => {
     let active = true;
     api.get('/public/stats')
-      .then((data) => { if (active) setStats(data); })
-      .catch((error) => { if (active) setStatsError(error.message); });
+      .then((data) => { if (active) { setStats(data); setStatsError(data.stale ? 'stale' : ''); } })
+      .catch(() => { if (active) setStatsError('unavailable'); });
     return () => { active = false; };
   }, []);
   return (
@@ -138,7 +107,6 @@ export default function Home() {
           <p className="lead">DefendIQ scans URLs, analyzes emails and detects potential threats using a rule engine, a local ML model and threat intelligence. Keep your digital life safe, simple and secure.</p>
           <div className="row wrap">
             <button className="btn btn-primary btn-lg" onClick={() => nav('/scan')}><ShieldCheck size={18} /> Start Free Scan <ArrowRight size={16} /></button>
-            <button className="btn btn-ghost btn-lg" onClick={() => setDemo(true)}><Play size={16} /> Watch Demo</button>
           </div>
           <div className="assure"><span><Check size={15} />No installation</span><span><Zap size={15} />Fast &amp; accurate</span><span><Lock size={15} />Privacy focused</span></div>
         </div>
@@ -169,7 +137,8 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              {statsError && <p className="ferr" role="status" style={{ marginTop: 12 }}>Installation stats are unavailable: {statsError}</p>}
+              {statsError === 'stale' && <p className="muted" role="status" style={{ marginTop: 12 }}>Showing the last successfully retrieved totals. Live updates are temporarily unavailable.</p>}
+              {statsError === 'unavailable' && <p className="muted" role="status" style={{ marginTop: 12 }}>Live totals are temporarily unavailable. Please check back later.</p>}
               <div className="legal" style={{ marginTop: 10 }}>Live totals from this installation. Your personal dashboard shows your own scans after sign-in.</div>
             </div>
           </Reveal>
@@ -203,7 +172,6 @@ export default function Home() {
       <section className="container section">
         <Reveal><div className="cta"><div><h2 className="h2">Ready to Protect Yourself?</h2><p className="muted" style={{ marginTop: 6 }}>Scan a link or email now - no registration required.</p></div><Link to="/scan" className="btn btn-primary btn-lg">Start Free Scan <ArrowRight size={16} /></Link></div></Reveal>
       </section>
-      <DemoModal open={demo} onClose={() => setDemo(false)} />
     </>
   );
 }

@@ -49,6 +49,8 @@ Set `CLIENT_ORIGIN` to your public URL, `TRUST_PROXY=1` behind a proxy, and serv
 
 The production frontend is hosted on Vercel and the Express API is hosted on Render. `client/vercel.json` forwards `/api/*` requests through Vercel to the API, keeping browser authentication same-site. The API connects to MongoDB Atlas using a dedicated application user limited to read/write access on the `defendiq` database. Credentials belong in the hosting providers' environment-variable settings; never put them in this repository.
 
+For this deployment, configure `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV`, `CLIENT_ORIGIN`, and `TRUST_PROXY` in Render; set `CLIENT_ORIGIN` to `https://defend-iq-sable.vercel.app` and use `TRUST_PROXY=1` behind Render's proxy. Render supplies `PORT`. Keep `VITE_API_URL` unset in Vercel while using the `/api` rewrite; a localhost API URL is for local development only. The API now serves health checks while retrying an unavailable MongoDB connection, and reports a degraded health status until the database reconnects.
+
 Render's free instance may sleep when idle, so the first API-backed request after inactivity can take around 50 seconds or longer while it wakes. The frontend and health endpoint were checked on November 2, 2026. Production smoke tests verified registration, login/logout, URL and email analysis, dashboard, scan history, reports, alerts, awareness modules, account profile/export, and threat intelligence. Temporary accounts created for those checks were deleted afterward.
 
 The published Vercel URL is suitable for sharing. To use a custom domain, add a domain in Vercel's project settings and configure the DNS records Vercel provides.

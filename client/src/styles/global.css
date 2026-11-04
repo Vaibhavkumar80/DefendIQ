@@ -174,7 +174,6 @@ h1,h2,h3,h4{margin:0;line-height:1.15;letter-spacing:-.02em}p{margin:0}
 .modal-bg{position:fixed;inset:0;z-index:150;background:rgba(2,5,15,.7);backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px;animation:fade .2s}.modal{width:min(640px,100%);max-height:90vh;overflow:auto;animation:pop .25s}
 @keyframes fade{from{opacity:0}}@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}}
 .page{animation:fadeUp .55s both}.reveal{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1)}.reveal.in{opacity:1;transform:none}
-.type-caret::after{content:"|";animation:blink 1s infinite}@keyframes blink{50%{opacity:0}}
 .pagination{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:18px}
 .legal{font-size:.78rem;color:var(--muted)}
 @media print{.nav,.side,.footer,.bg-wrap,.no-print,.toasts{display:none!important}.shell{display:block}body{background:#fff;color:#000}.card{background:#fff!important;box-shadow:none!important;border:1px solid #ccc!important;color:#000}.muted{color:#444!important}.reveal{opacity:1!important;transform:none!important}}
