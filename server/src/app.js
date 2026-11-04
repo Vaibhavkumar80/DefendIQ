@@ -39,7 +39,7 @@ export function createApp() {
     } : false,
     crossOriginEmbedderPolicy: false,
   }));
-  app.use(cors({ origin: config.clientOrigin, credentials: true }));
+  app.use(cors({ origin: config.allowedClientOrigins, credentials: true }));
   app.use(express.json({ limit: '200kb' }));
   app.use(cookieParser());
   app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 600, standardHeaders: true, legacyHeaders: false, skip: (req) => req.originalUrl.split('?')[0] === '/api/public/stats', message: { error: 'Too many requests. Slow down a little.' } }));

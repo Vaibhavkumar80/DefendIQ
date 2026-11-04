@@ -2,6 +2,22 @@ import crypto from 'node:crypto';
 
 const env = process.env;
 const isProd = env.NODE_ENV === 'production';
+const productionFrontendOrigin = 'https://defend-iq-sable.vercel.app';
+const configuredClientOrigin = env.CLIENT_ORIGIN?.trim().replace(/\/$/, '');
+const isProductionOrigin = (origin) => {
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === 'https:' && !['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+const clientOrigin = isProd
+  ? (isProductionOrigin(configuredClientOrigin) ? configuredClientOrigin : productionFrontendOrigin)
+  : (configuredClientOrigin || 'http://localhost:5173');
+const allowedClientOrigins = isProd
+  ? [...new Set([productionFrontendOrigin, clientOrigin])]
+  : [clientOrigin];
 
 let jwtSecret = env.JWT_SECRET;
 if (!jwtSecret || jwtSecret.length < 32) {
@@ -16,7 +32,8 @@ export const config = {
   port: Number(env.PORT) || 5000,
   mongoUri: env.MONGODB_URI || 'mongodb://127.0.0.1:27017/defendiq',
   jwtSecret,
-  clientOrigin: env.CLIENT_ORIGIN || (isProd ? 'https://defend-iq-sable.vercel.app' : 'http://localhost:5173'),
+  clientOrigin,
+  allowedClientOrigins,
   trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
   googleClientId: env.GOOGLE_CLIENT_ID || '',
   ollama: { url: env.OLLAMA_URL || 'http://127.0.0.1:11434', model: env.OLLAMA_MODEL || '' },
